@@ -11,6 +11,7 @@ static task_entry_t tasks[MAX_TASKS];
 #define TASK_STACK_SIZE 96U
 #define STACK_CANARY 0xA5
 static uint8_t task_stacks[MAX_TASKS][TASK_STACK_SIZE];
+static uint8_t last_scheduled_index = 0;
 
 task_entry_t *current_running_task = NULL;
 task_entry_t *next_task_to_run = NULL;
@@ -201,8 +202,10 @@ void task_yield(void)
     }
     task_entry_t *best_task = NULL;
     uint8_t highest_priority = 0;
-    for (uint8_t i = 0; i < task_count; i++)
+    uint8_t best_index = last_scheduled_index;
+    for (uint8_t count = 0; count < task_count; count++)
     {
+        uint8_t i = (count + last_scheduled_index + 1) % task_count;
         task_entry_t *task = get_task_by_index(i);
         if (task == NULL || task->state != TASK_READY)
             continue;
@@ -211,6 +214,7 @@ void task_yield(void)
         {
             best_task = task;
             highest_priority = task->priority;
+            best_index = i;
         }
     }
     if (best_task != NULL)
@@ -219,6 +223,7 @@ void task_yield(void)
             current_running_task->state = TASK_READY;
         }
         next_task_to_run = best_task;
+        last_scheduled_index = best_index;
         next_task_to_run->state = TASK_RUNNING;
         if (next_task_to_run != current_running_task)
         {
