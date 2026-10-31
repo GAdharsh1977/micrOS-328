@@ -45,17 +45,7 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
     task->interval_ms = config->interval_ms;
     task->state = TASK_WAITING;
     task->priority = config->priority;
-    task->execution_count = 0; // conflict test point.
     task->port = config->port;
-    task->multi_stage = config->multi_stage;
-    if (config->policy == SCHEDULE_FIXED_RATE)
-    {
-        task->policy = SCHEDULE_FIXED_RATE;
-    }
-    else
-    {
-        task->policy = SCHEDULE_FROM_LAST_RUN;
-    }
 
     task->next_run = timer_get_hardware_ticks() + MS_TO_TICKS(task->interval_ms);
 
@@ -77,27 +67,6 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
     task->sp = stk;
 
     return SCHEDULER_OK;
-}
-
-scheduler_status_t scheduler_get_execution_count(task_id_t id, uint32_t *count_out)
-{
-    if (count_out == 0)
-    {
-        return SCHEDULER_ERR_INVALID_ARGUMENT;
-    }
-    if (id == TASK_ID_INVALID)
-    {
-        return SCHEDULER_ERR_INVALID_ID;
-    }
-    for (uint8_t i = 0; i < task_count; i++)
-    {
-        if (tasks[i].id == id)
-        {
-            *count_out = tasks[i].execution_count;
-            return SCHEDULER_OK;
-        }
-    }
-    return SCHEDULER_ERR_INVALID_ID;
 }
 
 void update_next_task_id(void)
@@ -155,10 +124,7 @@ void delete_one_task(task_id_t to_remove)
             tasks[task_count - 1].next_run = 0;
             tasks[task_count - 1].state = TASK_BLOCKED;
             tasks[task_count - 1].priority = 0;
-            tasks[task_count - 1].policy = SCHEDULE_FROM_LAST_RUN;
-            tasks[task_count - 1].execution_count = 0;
             tasks[task_count - 1].port = Z; // default to invalid port.
-            tasks[task_count - 1].multi_stage = 0;
             task_count--;
             update_next_task_id(); // set next_task_id to the removed task's ID
             return;

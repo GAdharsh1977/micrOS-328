@@ -6,15 +6,8 @@
 
 typedef uint8_t task_id_t;
 #define TASK_ID_INVALID 0x00
-#define MAX_LEDS 0x08
 #define MAX_TASKS 0x08
 #define TASK_STACK_SIZE 96U
-
-typedef enum
-{
-    SCHEDULE_FROM_LAST_RUN = 0,
-    SCHEDULE_FIXED_RATE
-} schedule_policy_t;
 
 typedef enum
 {
@@ -46,10 +39,8 @@ typedef struct
     void (*function)(void);
     void (*cleanup)(void);
     uint32_t interval_ms;
-    schedule_policy_t policy;
     uint8_t priority;
     port_t port;
-    uint8_t multi_stage;
 } task_config_t;
 
 typedef struct
@@ -60,12 +51,9 @@ typedef struct
     uint8_t id;
     uint32_t interval_ms;
     uint32_t next_run;
-    schedule_policy_t policy;
     task_state_t state;
     uint8_t priority;
-    uint32_t execution_count;
     port_t port;
-    uint8_t multi_stage;
 } task_entry_t;
 
 extern task_entry_t* current_running_task;
@@ -74,7 +62,6 @@ extern task_entry_t* next_task_to_run;
 scheduler_status_t add_task(const task_config_t *config, task_id_t *id);
 void delete_one_task(task_id_t to_remove);
 
-scheduler_status_t scheduler_get_execution_count(task_id_t id, uint32_t *count_out);
 void update_next_task_id(void);
 
 uint8_t get_next_task_id(void);

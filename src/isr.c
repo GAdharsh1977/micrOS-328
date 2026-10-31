@@ -2,11 +2,11 @@
 #include "time.h"
 #include<stdint.h>
 #include "functions.h"
-volatile uint8_t disable_counter_requested = 0; // compiler optimisation prevention.
+
+// volatile uint8_t disable_counter_requested = 0; // compiler optimisation prevention.
 volatile uint8_t disable_breathing_requested = 0;
-volatile uint8_t disable_blinking_requested = 0;
+// volatile uint8_t disable_blinking_requested = 0;
 volatile uint8_t trigger_led_pattern_requested = 0;
-volatile uint32_t system_ticks;
 static uint32_t last_trigger_0 = 0;
 static uint32_t last_trigger_1 = 0;
 

@@ -15,10 +15,7 @@ task_id_t error_led_task_id = TASK_ID_INVALID;
 
 uint8_t brightness = 0;
 int8_t brightness_step = BRIGHTNESS_STEP;
-scheduler_status_t s;
 
-static uint8_t error_led_active = 0;
-static uint32_t error_led_turn_off_time = 0;
 static uint8_t step = 0;
 
 const uint8_t pattern[LED_PATTERN_STEPS] = {
@@ -40,7 +37,7 @@ void counter_task(void)
         PORTB = (PORTB & (uint8_t)~COUNTER_MASK) |
                 (uint8_t)((counter & 0x0F) << COUNTER_BIT0);
         mutex_unlock(m);
-        task_delay_ms(1000);
+        task_delay_ms(COUNTER_INTERVAL_MS);
     }
 }
 
@@ -62,7 +59,7 @@ void blink_task(void)
 
         PORTB ^= (1U << BLINK_LED);
         mutex_unlock(m);
-        task_delay_ms(300);
+        task_delay_ms(BLINK_INTERVAL_MS);
     }
 }
 
@@ -98,7 +95,7 @@ void led_breathe_task(void)
         }
         pwm_led_set_duty(brightness);
         mutex_unlock(m);
-        task_delay_ms(20);
+        task_delay_ms(BRIGHTNESS_UPDATE_MS);
     }
 }
 
@@ -123,8 +120,7 @@ void led_pattern_task(void)
                 PORTB = (PORTB & (uint8_t)~COUNTER_MASK) |
                         (uint8_t)(pattern[step] << COUNTER_BIT0);
 
-                uint32_t step_wake = timer_get_hardware_ticks() + MS_TO_TICKS(100);
-                sleep_until(step_wake);
+                task_delay_ms(LED_PATTERN_STEP_MS);
             }
 
             PORTB &= (uint8_t)~COUNTER_MASK;
@@ -202,7 +198,7 @@ void error_led_task(void)
         PORTB |= (1U << ERROR_LED);
         mutex_unlock(m);
 
-        task_delay_ms(1000);
+        task_delay_ms(ERROR_LED_TIME);
 
         while (m != NULL && !mutex_lock(m, error_led_task_id))
         {
@@ -234,61 +230,47 @@ const task_config_t counter_task_config = {
     .function = counter_task,
     .cleanup = counter_task_cleanup,
     .interval_ms = COUNTER_INTERVAL_MS,
-    .policy = SCHEDULE_FIXED_RATE,
     .priority = 2,
-    .port = B,
-    .multi_stage = 0};
+    .port = B};
 
 const task_config_t blink_task_config = {
     .function = blink_task,
     .cleanup = blink_task_cleanup,
     .interval_ms = BLINK_INTERVAL_MS,
-    .policy = SCHEDULE_FROM_LAST_RUN,
     .priority = 2,
-    .port = B,
-    .multi_stage = 0};
+    .port = B};
 
 const task_config_t breathe_task_config = {
     .function = led_breathe_task,
     .cleanup = led_breathe_task_cleanup,
     .interval_ms = BRIGHTNESS_UPDATE_MS,
-    .policy = SCHEDULE_FIXED_RATE,
     .priority = 1,
-    .port = D,
-    .multi_stage = 0};
+    .port = D};
 
 const task_config_t led_pattern_task_config = {
     .function = led_pattern_task,
     .cleanup = led_pattern_cleanup,
-    .interval_ms = 100,
-    .policy = SCHEDULE_FIXED_RATE,
+    .interval_ms = LED_PATTERN_STEP_MS,
     .priority = 2,
-    .port = B,
-    .multi_stage = 1};
+    .port = B};
 
 const task_config_t idle_task_config = {
     .function = idle_task,
     .cleanup = NULL,
     .interval_ms = 0,
-    .policy = SCHEDULE_FROM_LAST_RUN,
     .priority = 0,
-    .port = Z,
-    .multi_stage = 0};
+    .port = Z};
 
 const task_config_t supervisor_task_config = {
     .function = supervisor_task,
     .cleanup = NULL,
-    .interval_ms = 50,
-    .policy = SCHEDULE_FROM_LAST_RUN,
+    .interval_ms = SUPERVISOR_TASK_MS,
     .priority = 5,
-    .port = Z,
-    .multi_stage = 0};
+    .port = Z};
 
 const task_config_t error_led_task_config = {
     .function = error_led_task,
     .cleanup = NULL,
-    .interval_ms = 1000,
-    .policy = SCHEDULE_FROM_LAST_RUN,
+    .interval_ms = ERROR_LED_TIME,
     .priority = 3,
-    .port = B,
-    .multi_stage = 0};
+    .port = B};

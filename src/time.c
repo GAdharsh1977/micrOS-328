@@ -9,17 +9,10 @@
 
 void timer_init(void)
 {
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE)
-    {
-        system_ticks = 0;
-    }
-
     TCCR1A = 0;
     TCCR1B = 0;
 
     TCNT1 = 0;
-
-    //OCR1A = TIMER1_COMPARE;
 
     TIFR1 = (1 << OCF1A);
 
@@ -29,18 +22,6 @@ void timer_init(void)
              (1 << CS10);
 
     sei();
-}
-
-uint32_t timer_get_ticks(void)
-{
-    uint32_t ticks;
-
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) //avoiding race condition.
-    {
-        ticks = system_ticks;
-    }
-
-    return ticks;
 }
 
 uint32_t timer_get_hardware_ticks(void){

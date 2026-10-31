@@ -15,11 +15,6 @@ mutex_t portc_mutex;
 mutex_t portd_mutex;
 scheduler_status_t status;
 
-uint32_t min(uint32_t a, uint32_t b){
-    if(a <= b) return a;
-    return b;
-}
-
 static void gpio_init(void)
 {
     DDRB |= COUNTER_MASK;
@@ -49,12 +44,6 @@ int main(void)
     mutex_init(&portc_mutex);
     mutex_init(&portd_mutex);
 
-    if (!scheduler_sanity_check())
-    {
-        PORTB |= (1U << ERROR_LED);
-        while (1){}
-    }
-
     add_and_verify_task(&counter_task_config, &counter_task_id);
     add_and_verify_task(&blink_task_config, &blink_task_id);
     add_and_verify_task(&breathe_task_config, &breathe_task_id);
@@ -71,7 +60,7 @@ int main(void)
     add_and_verify_task(&error_led_task_config, &error_led_task_id);
     t = get_task_by_id(error_led_task_id);
     if(t != NULL) t->state = TASK_BLOCKED;
-    
+
     add_task(&idle_task_config, &idle_id);
 
     scheduler_start();

@@ -28,6 +28,7 @@
 #define ERROR_LED_TIME 1000UL
 #define LED_PATTERN_STEP_MS 100U
 #define LED_PATTERN_STEPS 16U
+#define SUPERVISOR_TASK_MS 50U
 
 extern const uint8_t pattern[LED_PATTERN_STEPS];
 
