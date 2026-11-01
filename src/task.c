@@ -8,7 +8,6 @@
 static uint8_t task_count = 0;
 static uint8_t next_task_id = 1;
 static task_entry_t tasks[MAX_TASKS];
-#define TASK_STACK_SIZE 96U
 #define STACK_CANARY 0xA5
 static uint8_t task_stacks[MAX_TASKS][TASK_STACK_SIZE];
 static uint8_t last_scheduled_index = 0;
@@ -27,16 +26,22 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
     {
         return SCHEDULER_ERR_INVALID_ARGUMENT;
     }
+     for (uint8_t i = 0; i < MAX_TASKS; i++)
+    {
+        if (tasks[i].id != TASK_ID_INVALID && tasks[i].function == config->function)
+        {
+            return SCHEDULER_ERR_INVALID_ARGUMENT;
+        }
+    }
     if (task_count >= MAX_TASKS)
     {
         return SCHEDULER_ERR_FULL;
     }
-    // not a concern for now.
     if (next_task_id == TASK_ID_INVALID)
     {
         return SCHEDULER_ERR_FULL;
     }
-    task_entry_t *task = &tasks[task_count];
+    task_entry_t *task = &tasks[next_task_id - 1];
     task_count++;
     task->id = next_task_id;
     *id = next_task_id;
@@ -50,8 +55,8 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
 
     task->next_run = timer_get_hardware_ticks() + MS_TO_TICKS(task->interval_ms);
 
-    task_stacks[task_count - 1][0] = STACK_CANARY;
-    uint8_t *stk = &task_stacks[task_count - 1][TASK_STACK_SIZE - 1];
+    task_stacks[next_task_id - 1][0] = STACK_CANARY;
+    uint8_t *stk = &task_stacks[next_task_id - 1][TASK_STACK_SIZE - 1];
 
     uint16_t function_address = (uint16_t)task->function;
     *stk-- = (uint8_t)(function_address & 0xFF); // storing function address.
@@ -72,10 +77,10 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
 
 void update_next_task_id(void)
 {
-    for (uint8_t candidate = 1; candidate != TASK_ID_INVALID; candidate++)
+    for (uint8_t candidate = 1; candidate <= MAX_TASKS; candidate++)
     {
         uint8_t in_use = 0;
-        for (uint8_t i = 0; i < task_count; i++)
+        for (uint8_t i = 0; i < MAX_TASKS; i++)
         {
             if (tasks[i].id == candidate)
             {
@@ -104,7 +109,7 @@ void delete_one_task(task_id_t to_remove)
     portc_mutex.mask &= ~(1U << (to_remove - 1));
     portd_mutex.mask &= ~(1U << (to_remove - 1));
 
-    for (uint8_t i = 0; i < task_count; i++)
+    for (uint8_t i = 0; i < MAX_TASKS; i++)
     {
         if (tasks[i].id == to_remove)
         {
@@ -112,22 +117,16 @@ void delete_one_task(task_id_t to_remove)
             {
                 tasks[i].cleanup();
             }
-            // shift all subsequent tasks left by one unit.
-            for (uint8_t j = i; j < task_count - 1; j++)
-            {
-                tasks[j] = tasks[j + 1];
-            }
-            // zero out the now-vacant last slot
-            tasks[task_count - 1].id = 0;
-            tasks[task_count - 1].function = 0;
-            tasks[task_count - 1].cleanup = 0;
-            tasks[task_count - 1].interval_ms = 0;
-            tasks[task_count - 1].next_run = 0;
-            tasks[task_count - 1].state = TASK_BLOCKED;
-            tasks[task_count - 1].priority = 0;
-            tasks[task_count - 1].port = Z; // default to invalid port.
+            tasks[i].id = TASK_ID_INVALID;
+            tasks[i].function = 0;
+            tasks[i].cleanup = 0;
+            tasks[i].interval_ms = 0;
+            tasks[i].next_run = 0;
+            tasks[i].state = TASK_BLOCKED;
+            tasks[i].priority = 0;
+            tasks[i].port = Z; // default to no port usage.
             task_count--;
-            update_next_task_id(); // set next_task_id to the removed task's ID
+            update_next_task_id(); // set next_task_id to the removed task ID.
             return;
         }
     }
@@ -153,7 +152,7 @@ void set_task_count(uint8_t count)
 }
 task_entry_t *get_task_by_index(uint8_t index)
 {
-    if (index < task_count)
+    if (index < MAX_TASKS)
     {
         return &tasks[index];
     }
@@ -163,7 +162,7 @@ task_entry_t *get_task_by_index(uint8_t index)
 task_entry_t *get_task_by_id(uint8_t id)
 {
     uint8_t i = 0;
-    for (i = 0; i < task_count; i++)
+    for (i = 0; i < MAX_TASKS; i++)
     {
         if (tasks[i].id == id)
         {
@@ -175,7 +174,7 @@ task_entry_t *get_task_by_id(uint8_t id)
 
 uint8_t task_check_stack(task_id_t id)
 {
-    for (uint8_t i = 0; i < task_count; i++)
+    for (uint8_t i = 0; i < MAX_TASKS; i++)
     {
         if (tasks[i].id == id)
         {
@@ -203,11 +202,11 @@ void task_yield(void)
     task_entry_t *best_task = NULL;
     uint8_t highest_priority = 0;
     uint8_t best_index = last_scheduled_index;
-    for (uint8_t count = 0; count < task_count; count++)
+    for (uint8_t count = 0; count < MAX_TASKS; count++)
     {
-        uint8_t i = (count + last_scheduled_index + 1) % task_count;
+        uint8_t i = (count + last_scheduled_index + 1) % MAX_TASKS;
         task_entry_t *task = get_task_by_index(i);
-        if (task == NULL || task->state != TASK_READY)
+        if (task == NULL || task->id == TASK_ID_INVALID || task->state != TASK_READY)
             continue;
 
         if (best_task == NULL || task->priority > highest_priority)
@@ -248,9 +247,9 @@ void scheduler_start(void)
     task_entry_t *best_task = NULL;
     uint8_t highest_priority = 0;
 
-    for (uint8_t i = 0; i < task_count; i++)
+    for (uint8_t i = 0; i < MAX_TASKS; i++)
     {
-        if (tasks[i].state == TASK_READY || tasks[i].state == TASK_WAITING)
+        if (tasks[i].id != TASK_ID_INVALID && (tasks[i].state == TASK_READY || tasks[i].state == TASK_WAITING))
         {
             tasks[i].state = TASK_READY;
             if (best_task == NULL || tasks[i].priority > highest_priority)

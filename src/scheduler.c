@@ -9,6 +9,15 @@ void scheduler_init(scheduler_status_t *status)
 {
     set_task_count(0);
     set_next_task_id(1); // conflict test point.
+    for(uint8_t i = 0; i < MAX_TASKS; i++)
+    {
+        task_entry_t *task = get_task_by_index(i);
+        if (task != NULL)
+        {
+            task->id = TASK_ID_INVALID;
+            task->state = TASK_BLOCKED;
+        }
+    }
     *status = SCHEDULER_OK;
 }
 
@@ -28,8 +37,7 @@ scheduler_status_t add_and_verify_task(const task_config_t *config, task_id_t *i
 
 void update_ready_list(){
     uint8_t i = 0;
-    uint8_t task_count = get_task_count();
-    for(i = 0; i < task_count; i++){
+    for(i = 0; i < MAX_TASKS; i++){
         task_entry_t* t = get_task_by_index(i);
         if(t->state != TASK_WAITING) continue;
         if((int32_t)(timer_get_hardware_ticks() - t->next_run) >= 0){
@@ -40,11 +48,10 @@ void update_ready_list(){
 
 uint32_t determine_wake_up_time(){
     uint32_t wake_up_time = 0xFFFFFFFF;
-    uint8_t task_count = get_task_count();
     uint8_t waiting = 0;
-    if(!task_count) return timer_get_hardware_ticks();
+    if(!get_task_count()) return timer_get_hardware_ticks();
 
-    for(uint8_t i = 0; i < task_count; i++){
+    for(uint8_t i = 0; i < MAX_TASKS; i++){
         task_entry_t* t = get_task_by_index(i);
         if(t == NULL) continue;
         if(t->state == TASK_READY) return timer_get_hardware_ticks();

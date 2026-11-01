@@ -165,7 +165,7 @@ void supervisor_task(void)
         {
             trigger_led_pattern_requested = 0;
             task_entry_t *t = get_task_by_id(led_pattern_task_id);
-            if (t != NULL && t->state == TASK_BLOCKED)
+            if (t != NULL)
             {
                 t->next_run = timer_get_hardware_ticks();
                 t->state = TASK_READY;
@@ -187,17 +187,20 @@ void supervisor_task(void)
 
 void error_led_task(void)
 {
-    mutex_t *m = determine_mutex(error_led_task_id);
     task_entry_t *self = get_task_by_id(error_led_task_id);
     while (1)
     {
+        mutex_t *m = determine_mutex(error_led_task_id);
+
         while (m != NULL && !mutex_lock(m, error_led_task_id))
         {
             task_yield();
         }
         PORTB |= (1U << ERROR_LED);
-        mutex_unlock(m);
-
+        if (m != NULL)
+        {
+            mutex_unlock(m);
+        }
         task_delay_ms(ERROR_LED_TIME);
 
         while (m != NULL && !mutex_lock(m, error_led_task_id))
@@ -205,7 +208,10 @@ void error_led_task(void)
             task_yield();
         }
         PORTB &= ~(1U << ERROR_LED);
-        mutex_unlock(m);
+        if (m != NULL)
+        {
+            mutex_unlock(m);
+        }
 
         if (self != NULL)
         {
@@ -222,7 +228,6 @@ void trigger_error_pulse(void)
     {
         err_task->next_run = timer_get_hardware_ticks();
         err_task->state = TASK_READY;
-        task_yield();
     }
 }
 
@@ -244,21 +249,21 @@ const task_config_t breathe_task_config = {
     .function = led_breathe_task,
     .cleanup = led_breathe_task_cleanup,
     .interval_ms = BRIGHTNESS_UPDATE_MS,
-    .priority = 1,
+    .priority = 2,
     .port = D};
 
 const task_config_t led_pattern_task_config = {
     .function = led_pattern_task,
     .cleanup = led_pattern_cleanup,
     .interval_ms = LED_PATTERN_STEP_MS,
-    .priority = 2,
+    .priority = 3,
     .port = B};
 
 const task_config_t idle_task_config = {
     .function = idle_task,
     .cleanup = NULL,
     .interval_ms = 0,
-    .priority = 0,
+    .priority = 1,
     .port = Z};
 
 const task_config_t supervisor_task_config = {
