@@ -4,11 +4,15 @@
 #include <stddef.h>
 #include "mutex.h"
 #include "scheduler.h"
+#include "functions.h"
+#include <util/delay.h>
+#include <avr/interrupt.h>
 
 static uint8_t task_count = 0;
 static uint8_t next_task_id = 1;
 static task_entry_t tasks[MAX_TASKS];
-#define STACK_CANARY 0xA5
+#define STACK_LAST_BYTE 0xA5
+#define STACK_DETECTOR_SIZE 4U
 static uint8_t task_stacks[MAX_TASKS][TASK_STACK_SIZE];
 static uint8_t last_scheduled_index = 0;
 
@@ -45,7 +49,8 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
     task_count++;
     task->id = next_task_id;
     *id = next_task_id;
-    update_next_task_id(); // conflict test point.
+    uint8_t slot = next_task_id - 1;
+    update_next_task_id();
     task->function = config->function;
     task->cleanup = config->cleanup;
     task->interval_ms = config->interval_ms;
@@ -54,9 +59,11 @@ scheduler_status_t add_task(const task_config_t *config, task_id_t *id)
     task->port = config->port;
 
     task->next_run = timer_get_hardware_ticks() + MS_TO_TICKS(task->interval_ms);
-
-    task_stacks[next_task_id - 1][0] = STACK_CANARY;
-    uint8_t *stk = &task_stacks[next_task_id - 1][TASK_STACK_SIZE - 1];
+    for(uint8_t i = 0; i < STACK_DETECTOR_SIZE; i++)
+    {
+        task_stacks[slot][i] = STACK_LAST_BYTE;
+    }
+    uint8_t *stk = &task_stacks[slot][TASK_STACK_SIZE - 1]; 
 
     uint16_t function_address = (uint16_t)task->function;
     *stk-- = (uint8_t)(function_address & 0xFF); // storing function address.
@@ -178,14 +185,38 @@ uint8_t task_check_stack(task_id_t id)
     {
         if (tasks[i].id == id)
         {
-            return (task_stacks[i][0] == STACK_CANARY);
+            for(uint8_t j = 0; j < STACK_DETECTOR_SIZE; j++)
+            {
+                if (task_stacks[i][j] != STACK_LAST_BYTE)
+                {
+                    return 0; //stack overflow detected.
+                }
+            }
+            return 1;
         }
     }
-    return 0;
+    return 0; // task not found.
+}
+
+void __attribute__((noreturn)) stack_overflow_trap(void){
+    cli();
+    PORTD &= ~(1U << POWER_ON_LED);
+    PORTB &= ~(1U << BLINK_LED);
+    PORTB &= ~COUNTER_MASK;
+    pwm_led_set_duty(0);
+    while(1){
+        PORTB ^= (1U << ERROR_LED);
+        _delay_ms(100);
+    }
 }
 
 void task_yield(void)
 {
+    if(current_running_task != NULL && current_running_task->state == TASK_RUNNING){
+        if(!task_check_stack(current_running_task->id)){
+            stack_overflow_trap();
+        }
+    }
     update_ready_list();
 
     uint32_t earliest_wake = determine_wake_up_time();

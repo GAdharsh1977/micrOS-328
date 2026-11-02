@@ -1,6 +1,8 @@
 #include "functions.h"
 #include "task.h"
 #include <avr/io.h>
+#include <avr/interrupt.h>
+
 #include "pwm.h"
 #include "time.h"
 #include "scheduler.h"
@@ -12,6 +14,7 @@ task_id_t breathe_task_id = TASK_ID_INVALID;
 task_id_t led_pattern_task_id = TASK_ID_INVALID;
 task_id_t supervisor_task_id = TASK_ID_INVALID;
 task_id_t error_led_task_id = TASK_ID_INVALID;
+task_id_t overflow_task_id = TASK_ID_INVALID;
 
 uint8_t brightness = 0;
 int8_t brightness_step = BRIGHTNESS_STEP;
@@ -123,7 +126,6 @@ void led_pattern_task(void)
                 task_delay_ms(LED_PATTERN_STEP_MS);
             }
 
-            PORTB &= (uint8_t)~COUNTER_MASK;
             step = 0;
             mutex_unlock(m);
 
@@ -171,6 +173,16 @@ void supervisor_task(void)
                 t->state = TASK_READY;
             }
         }
+        if (overflow_task_requested == 1)
+        {
+            overflow_task_requested = 0;
+            add_task(&overflow_task_config, &overflow_task_id);
+            task_entry_t *ovf = get_task_by_id(overflow_task_id);
+            if(ovf != NULL){
+                ovf->next_run = timer_get_hardware_ticks();
+                ovf->state = TASK_READY;
+            }
+        }
         if (disable_breathing_requested == 2)
         {
             disable_breathing_requested = 0;
@@ -216,6 +228,16 @@ void error_led_task(void)
         if (self != NULL)
         {
             self->state = TASK_BLOCKED;
+        }
+        task_yield();
+    }
+}
+void overflow_task(void)
+{
+    while(1){
+        volatile uint8_t junk[80];
+        for(uint8_t i = 0; i < 80; i++){
+            junk[i] = 0x00;
         }
         task_yield();
     }
@@ -279,3 +301,10 @@ const task_config_t error_led_task_config = {
     .interval_ms = ERROR_LED_TIME,
     .priority = 3,
     .port = B};
+
+const task_config_t overflow_task_config = {
+    .function = overflow_task,
+    .cleanup = NULL,
+    .interval_ms = 0,
+    .priority = 4,
+    .port = Z};

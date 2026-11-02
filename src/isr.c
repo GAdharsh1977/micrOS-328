@@ -7,6 +7,7 @@
 volatile uint8_t disable_breathing_requested = 0;
 // volatile uint8_t disable_blinking_requested = 0;
 volatile uint8_t trigger_led_pattern_requested = 0;
+volatile uint8_t overflow_task_requested = 0;
 static uint32_t last_trigger_0 = 0;
 static uint32_t last_trigger_1 = 0;
 
@@ -32,7 +33,7 @@ ISR(INT1_vect){
         return;
     }
     last_trigger_1 = now;
-    disable_breathing_requested = 2;
+    overflow_task_requested = 1;
     task_entry_t* sup = get_task_by_id(supervisor_task_id);
     if(sup != NULL){
         sup->state = TASK_READY;

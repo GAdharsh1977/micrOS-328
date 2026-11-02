@@ -23,7 +23,6 @@ CFLAGS = -mmcu=$(MCU) \
          -Os \
          -Wall \
          -Wextra \
-         -Werror \
          -Iinclude
 
 all: $(TARGET).hex

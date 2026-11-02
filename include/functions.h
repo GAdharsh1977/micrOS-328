@@ -45,11 +45,13 @@ extern task_id_t breathe_task_id;
 extern task_id_t led_pattern_task_id;
 extern task_id_t idle_task_id;
 extern task_id_t error_led_task_id;
+extern task_id_t overflow_task_id;
 
 extern volatile uint8_t disable_breathing_requested;
 extern volatile uint8_t disable_counter_requested;
 extern volatile uint8_t disable_blinking_requested;
 extern volatile uint8_t trigger_led_pattern_requested;
+extern volatile uint8_t overflow_task_requested;
 
 extern const task_config_t counter_task_config;
 extern const task_config_t blink_task_config;
@@ -57,12 +59,14 @@ extern const task_config_t breathe_task_config;
 extern const task_config_t led_pattern_task_config;
 extern const task_config_t idle_task_config;
 extern const task_config_t error_led_task_config;
+extern const task_config_t overflow_task_config;
 
 void counter_task(void);
 void led_breathe_task(void);
 void blink_task(void);
 void led_pattern_task(void);
 void idle_task(void);
+void overflow_task(void);
 
 void led_pattern_cleanup(void);
 void counter_task_cleanup(void);
