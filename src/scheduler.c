@@ -46,6 +46,35 @@ void update_ready_list(){
     }
 }
 
+void scheduler_start(void)
+{
+    task_entry_t *best_task = NULL;
+    uint8_t highest_priority = 0;
+
+    for (uint8_t i = 0; i < MAX_TASKS; i++)
+    {
+        task_entry_t *task = get_task_by_index(i);
+        if (task == NULL) continue;
+        if (task->id != TASK_ID_INVALID && (task->state == TASK_READY || task->state == TASK_WAITING))
+        {
+            task->state = TASK_READY;
+            if (best_task == NULL || task->priority > highest_priority)
+            {
+                highest_priority = task->priority;
+                best_task = task;
+            }
+        }
+    }
+
+    if (best_task != NULL)
+    {
+        current_running_task = NULL;
+        next_task_to_run = best_task;
+        next_task_to_run->state = TASK_RUNNING;
+        scheduler_context_switch();
+    }
+}
+
 uint32_t determine_wake_up_time(){
     uint32_t wake_up_time = 0xFFFFFFFF;
     uint8_t waiting = 0;

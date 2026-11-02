@@ -44,6 +44,10 @@ int main(void)
     mutex_init(&portc_mutex);
     mutex_init(&portd_mutex);
 
+    add_and_verify_task(&supervisor_task_config, &supervisor_task_id);
+    task_entry_t* t = get_task_by_id(supervisor_task_id);
+    if(t != NULL) t->state = TASK_BLOCKED;
+
     add_and_verify_task(&counter_task_config, &counter_task_id);
     add_and_verify_task(&blink_task_config, &blink_task_id);
     add_and_verify_task(&breathe_task_config, &breathe_task_id);
@@ -52,9 +56,6 @@ int main(void)
     task_entry_t* led = get_task_by_id(led_pattern_task_id);
     if(led != NULL) led->state = TASK_BLOCKED;
 
-    add_and_verify_task(&supervisor_task_config, &supervisor_task_id);
-    task_entry_t* t = get_task_by_id(supervisor_task_id);
-    if(t != NULL) t->state = TASK_BLOCKED;
     task_id_t idle_id;
 
     add_and_verify_task(&error_led_task_config, &error_led_task_id);

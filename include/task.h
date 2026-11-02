@@ -7,14 +7,16 @@
 typedef uint8_t task_id_t;
 #define TASK_ID_INVALID 0x00
 #define MAX_TASKS 0x08
-#define TASK_STACK_SIZE 96U
+#define TASK_STACK_SIZE 100U
 
 typedef enum
 {
     TASK_READY = 0,
     TASK_RUNNING,
     TASK_BLOCKED,
-    TASK_WAITING
+    TASK_WAITING,
+    TASK_FAULTED,
+    TASK_COLLATERAL_DAMAGE
 } task_state_t;
 
 typedef enum
@@ -75,7 +77,6 @@ task_entry_t* get_task_by_id(uint8_t id);
 
 void task_yield(void);
 void task_delay_ms(uint32_t ms);
-void scheduler_start(void);
 void scheduler_context_switch(void);
 
 #endif

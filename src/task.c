@@ -5,15 +5,14 @@
 #include "mutex.h"
 #include "scheduler.h"
 #include "functions.h"
+#include "stack.h"
 #include <util/delay.h>
 #include <avr/interrupt.h>
 
 static uint8_t task_count = 0;
 static uint8_t next_task_id = 1;
 static task_entry_t tasks[MAX_TASKS];
-#define STACK_LAST_BYTE 0xA5
-#define STACK_DETECTOR_SIZE 4U
-static uint8_t task_stacks[MAX_TASKS][TASK_STACK_SIZE];
+
 static uint8_t last_scheduled_index = 0;
 
 task_entry_t *current_running_task = NULL;
@@ -179,42 +178,16 @@ task_entry_t *get_task_by_id(uint8_t id)
     return NULL;
 }
 
-uint8_t task_check_stack(task_id_t id)
-{
-    for (uint8_t i = 0; i < MAX_TASKS; i++)
-    {
-        if (tasks[i].id == id)
-        {
-            for(uint8_t j = 0; j < STACK_DETECTOR_SIZE; j++)
-            {
-                if (task_stacks[i][j] != STACK_LAST_BYTE)
-                {
-                    return 0; //stack overflow detected.
-                }
-            }
-            return 1;
-        }
-    }
-    return 0; // task not found.
-}
-
-void __attribute__((noreturn)) stack_overflow_trap(void){
-    cli();
-    PORTD &= ~(1U << POWER_ON_LED);
-    PORTB &= ~(1U << BLINK_LED);
-    PORTB &= ~COUNTER_MASK;
-    pwm_led_set_duty(0);
-    while(1){
-        PORTB ^= (1U << ERROR_LED);
-        _delay_ms(100);
-    }
-}
-
 void task_yield(void)
 {
+    if(!kernel_memory_intact()){
+        stack_overflow_trap();
+    }
     if(current_running_task != NULL && current_running_task->state == TASK_RUNNING){
         if(!task_check_stack(current_running_task->id)){
-            stack_overflow_trap();
+            task_entry_t* culprit = current_running_task;
+            current_running_task = NULL;
+            handle_stack_fault(culprit);
         }
     }
     update_ready_list();
@@ -271,31 +244,4 @@ void task_delay_ms(uint32_t ms)
     current_running_task->next_run = timer_get_hardware_ticks() + MS_TO_TICKS(ms);
 
     task_yield();
-}
-
-void scheduler_start(void)
-{
-    task_entry_t *best_task = NULL;
-    uint8_t highest_priority = 0;
-
-    for (uint8_t i = 0; i < MAX_TASKS; i++)
-    {
-        if (tasks[i].id != TASK_ID_INVALID && (tasks[i].state == TASK_READY || tasks[i].state == TASK_WAITING))
-        {
-            tasks[i].state = TASK_READY;
-            if (best_task == NULL || tasks[i].priority > highest_priority)
-            {
-                highest_priority = tasks[i].priority;
-                best_task = &tasks[i];
-            }
-        }
-    }
-
-    if (best_task != NULL)
-    {
-        current_running_task = NULL;
-        next_task_to_run = best_task;
-        next_task_to_run->state = TASK_RUNNING;
-        scheduler_context_switch();
-    }
 }

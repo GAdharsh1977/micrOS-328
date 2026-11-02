@@ -2,6 +2,7 @@
 #include "task.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "stack.h"
 
 #include "pwm.h"
 #include "time.h"
@@ -235,9 +236,13 @@ void error_led_task(void)
 void overflow_task(void)
 {
     while(1){
-        volatile uint8_t junk[80];
-        for(uint8_t i = 0; i < 80; i++){
+        uint16_t times = 761;
+        volatile uint8_t junk[times];
+        for(uint16_t i = 0; i < times; i++){
             junk[i] = 0x00;
+        }
+        for(uint16_t i = 0; i < times; i++){
+            junk[i] += 1;
         }
         task_yield();
     }
