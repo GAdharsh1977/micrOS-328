@@ -64,6 +64,10 @@ int main(void)
 
     add_task(&idle_task_config, &idle_id);
 
+    add_and_verify_task(&overflow_task_config, &overflow_task_id);
+    t = get_task_by_id(overflow_task_id);
+    if (t != NULL) t->state = TASK_BLOCKED;
+
     scheduler_start();
 
     //should never reach this point.

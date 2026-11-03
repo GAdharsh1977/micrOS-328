@@ -164,32 +164,20 @@ void supervisor_task(void)
     task_entry_t *self = get_task_by_id(supervisor_task_id);
     while (1)
     {
-        if (trigger_led_pattern_requested == 1)
+        if (process_interrupt_flag != 0)
         {
-            trigger_led_pattern_requested = 0;
-            task_entry_t *t = get_task_by_id(led_pattern_task_id);
-            if (t != NULL)
+            for (uint8_t i = 0; i < MAX_TASKS; i++)
             {
-                t->next_run = timer_get_hardware_ticks();
-                t->state = TASK_READY;
-            }
-        }
-        if (overflow_task_requested == 1)
-        {
-            overflow_task_requested = 0;
-            add_task(&overflow_task_config, &overflow_task_id);
-            task_entry_t *ovf = get_task_by_id(overflow_task_id);
-            if(ovf != NULL){
-                ovf->next_run = timer_get_hardware_ticks();
-                ovf->state = TASK_READY;
-            }
-        }
-        if (disable_breathing_requested == 2)
-        {
-            disable_breathing_requested = 0;
-            if (add_and_verify_task(&breathe_task_config, &breathe_task_id) != SCHEDULER_OK)
-            {
-                trigger_error_pulse();
+                if (process_interrupt_flag & (1U << i))
+                {
+                    task_entry_t *t = get_task_by_id(i + 1);
+                    if (t != NULL && t->state == TASK_BLOCKED)
+                    {
+                        t->state = TASK_READY;
+                        t->next_run = timer_get_hardware_ticks();
+                    }
+                    process_interrupt_flag &= ~(1U << i);
+                }
             }
         }
         if (self != NULL)

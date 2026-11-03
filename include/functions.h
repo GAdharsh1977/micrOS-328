@@ -47,11 +47,7 @@ extern task_id_t idle_task_id;
 extern task_id_t error_led_task_id;
 extern task_id_t overflow_task_id;
 
-extern volatile uint8_t disable_breathing_requested;
-extern volatile uint8_t disable_counter_requested;
-extern volatile uint8_t disable_blinking_requested;
-extern volatile uint8_t trigger_led_pattern_requested;
-extern volatile uint8_t overflow_task_requested;
+extern volatile uint8_t process_interrupt_flag;
 
 extern const task_config_t counter_task_config;
 extern const task_config_t blink_task_config;
