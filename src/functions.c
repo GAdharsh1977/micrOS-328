@@ -224,7 +224,7 @@ void error_led_task(void)
 void overflow_task(void)
 {
     while(1){
-        uint16_t times = 761;
+        uint16_t times = 762;
         volatile uint8_t junk[times];
         for(uint16_t i = 0; i < times; i++){
             junk[i] = 0x00;

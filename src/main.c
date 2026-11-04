@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <stdint.h>
 #include <stddef.h>
 #include <avr/sleep.h>
@@ -34,6 +35,9 @@ static void gpio_init(void)
 
 int main(void)
 {
+    MCUSR &= ~(1 << WDRF);
+    wdt_disable();
+
     gpio_init();
     timer_init();
     scheduler_init(&status);

@@ -1,5 +1,6 @@
 #include "stack.h"
 #include <avr/io.h>
+#include <avr/wdt.h>
 #include <avr/interrupt.h>
 #include "functions.h"
 #include "time.h"
@@ -37,10 +38,16 @@ void __attribute__((noreturn)) stack_overflow_trap(void)
     PORTB &= ~(1U << BLINK_LED);
     PORTB &= ~COUNTER_MASK;
     pwm_led_set_duty(0);
-    while (1)
+    uint8_t blink_count = 0;
+    while (blink_count < 10)
     {
         PORTB ^= (1U << ERROR_LED);
         _delay_ms(100);
+        blink_count++;
+    }
+    wdt_enable(WDTO_15MS);
+    while(1){
+        //need this to make it a noreturn function.
     }
 }
 
