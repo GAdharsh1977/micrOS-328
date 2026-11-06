@@ -63,7 +63,6 @@ The system runs standalone on a breadboard without requiring an Arduino board or
 ```
 micrOS-328/
 ├── include/
-│   ├── context_switch.h   # Context switcher assembly declarations
 │   ├── functions.h        # Worker tasks and application prototypes
 │   ├── interrupt.h        # External interrupt configurations (INT0/INT1)
 │   ├── mutex.h            # Mutex definitions and priority inheritance APIs
