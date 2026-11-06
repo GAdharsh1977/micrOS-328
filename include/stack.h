@@ -7,6 +7,7 @@
 #define STACK_DETECTOR_SIZE 4U
 #define STACK_LOWER_END 0xDEADBEEFUL
 #define STACK_UPPER_END 0xBEEFDEADUL
+#define REBOOT_LED_TIME 100U
 
 typedef struct {
     volatile uint32_t lower_end;
@@ -19,7 +20,7 @@ extern guarded_stack_t guarded_memory;
 
 uint8_t task_stack_memory_intact(void);
 uint8_t kernel_memory_intact(void);
-void __attribute__((noreturn)) stack_overflow_trap(void);
+void __attribute__((noreturn)) full_silicon_reboot(void);
 
 uint8_t task_check_stack(task_id_t id);
 

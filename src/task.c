@@ -181,7 +181,7 @@ task_entry_t *get_task_by_id(uint8_t id)
 void task_yield(void)
 {
     if(!kernel_memory_intact()){
-        stack_overflow_trap();
+        full_silicon_reboot();
     }
     if(current_running_task != NULL && current_running_task->state == TASK_RUNNING){
         if(!task_check_stack(current_running_task->id)){

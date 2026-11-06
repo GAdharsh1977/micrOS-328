@@ -31,7 +31,16 @@ uint8_t kernel_memory_intact(void)
     return (guarded_memory.lower_end == STACK_LOWER_END) && (guarded_memory.upper_end == STACK_UPPER_END);
 }
 
-void __attribute__((noreturn)) stack_overflow_trap(void)
+static void hw_delay_ms(uint16_t ms){
+    OCR1B = (uint16_t)(TCNT1 + MS_TO_TICKS(ms));
+    TIFR1 = (1U << OCF1B);
+    while((TIFR1 & (1U << OCF1B)) == 0){
+        //wait for compare match
+    }
+    TIFR1 = (1U << OCF1B);
+}
+
+void __attribute__((noreturn)) full_silicon_reboot(void)
 {
     cli();
     PORTD &= ~(1U << POWER_ON_LED);
@@ -39,10 +48,11 @@ void __attribute__((noreturn)) stack_overflow_trap(void)
     PORTB &= ~COUNTER_MASK;
     pwm_led_set_duty(0);
     uint8_t blink_count = 0;
-    while (blink_count < 10)
+    while (blink_count < 10) //blink for 1s.
     {
         PORTB ^= (1U << ERROR_LED);
-        _delay_ms(100);
+        OCR1B += MS_TO_TICKS(ERROR_LED_TIME);
+        hw_delay_ms(REBOOT_LED_TIME);
         blink_count++;
     }
     wdt_enable(WDTO_15MS);
@@ -112,7 +122,7 @@ void handle_stack_fault(task_entry_t *culprit)
 {
     if (!kernel_memory_intact())
     {
-        stack_overflow_trap();
+        full_silicon_reboot();
     }
     culprit->state = TASK_FAULTED;
     if (portb_mutex.owner == culprit->id)
