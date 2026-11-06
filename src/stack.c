@@ -51,7 +51,6 @@ void __attribute__((noreturn)) full_silicon_reboot(void)
     while (blink_count < 10) //blink for 1s.
     {
         PORTB ^= (1U << ERROR_LED);
-        OCR1B += MS_TO_TICKS(ERROR_LED_TIME);
         hw_delay_ms(REBOOT_LED_TIME);
         blink_count++;
     }
